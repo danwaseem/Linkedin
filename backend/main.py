@@ -145,6 +145,14 @@ async def root():
 async def health_check():
     """Detailed health check with dependency status."""
     from cache import cache
+    from database import mongo_client
+
+    mongo_ok = False
+    try:
+        await mongo_client.admin.command("ping")
+        mongo_ok = True
+    except Exception:
+        mongo_ok = False
 
     health = {
         "status": "healthy",
@@ -152,6 +160,7 @@ async def health_check():
             "api": True,
             "redis": cache.health_check(),
             "kafka_producer": kafka_producer.producer is not None,
+            "mongodb": mongo_ok,
         },
     }
 

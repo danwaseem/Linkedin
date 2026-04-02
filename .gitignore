@@ -47,3 +47,6 @@ logs/
 htmlcov/
 .coverage
 .coverage.*
+
+# Pytest
+.pytest_cache/

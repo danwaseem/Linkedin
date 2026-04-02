@@ -1,201 +1,284 @@
 # LinkedIn Agentic AI Platform
 
-Course-style project: a **FastAPI** backend that models LinkedIn-like domains (members, recruiters, jobs, applications, messaging, connections, analytics) plus **agentic AI** helpers (resume parsing, job matching, hiring workflows). Data lives in **MySQL**; **MongoDB** holds event-style logs; **Redis** caches hot reads; **Kafka** carries domain events. A small **React + Vite** console talks to the same APIs you can hit from **Postman** or **Swagger UI**.
+> **DATA236 · distributed systems + agentic AI demo**  
+> A LinkedIn-style domain modeled as a **FastAPI** monolith (clear service boundaries in code), backed by **MySQL**, **MongoDB**, **Redis**, and **Kafka**, with optional **Ollama** for local LLMs. A **React + Vite** console exercises the same HTTP API you can drive from **Swagger** or **Postman**.
 
 ---
 
-## What’s in this repo
+## Contents
 
-| Area | Location |
-|------|----------|
-| REST API (FastAPI) | `backend/` |
-| MySQL schema | `backend/db/init.sql` |
-| Synthetic seeder | `backend/seed_data.py` |
-| OpenAPI 3 JSON (static) | `docs/openapi.json` — import into [Swagger Editor](https://editor.swagger.io/) or codegen tools |
-| Live Swagger / ReDoc | Run the API → `http://localhost:8000/docs` and `/redoc` |
-| Postman | `postman/LinkedIn_Platform_API.postman_collection.json` + `postman/Local.postman_environment.json` |
-| Infra | `docker-compose.yml` |
-| Web UI | `frontend/` |
+- [At a glance](#at-a-glance)
+- [Architecture](#architecture)
+- [Repository map](#repository-map)
+- [Tech stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Setup (step by step)](#setup-step-by-step)
+- [Running tests](#running-tests)
+- [API documentation](#api-documentation)
+- [Is everything working?](#is-everything-working)
+- [Troubleshooting](#troubleshooting)
+- [Backend layout](#backend-layout)
+- [Development notes](#development-notes)
+- [License / course use](#license--course-use)
+
+---
+
+## At a glance
+
+| Layer | Role |
+|--------|------|
+| **REST API** | Members, recruiters, jobs, applications, messages, connections, analytics, AI agents |
+| **MySQL** | Source of truth for relational entities |
+| **MongoDB** | Event logs, idempotency for Kafka consumer, agent traces |
+| **Redis** | Query / profile caching |
+| **Kafka** | Domain events (`job.created`, `application.submitted`, …) |
+| **Ollama** *(optional)* | LLM-backed resume parsing and matching; **automatic regex/heuristic fallback** if Ollama is offline |
+| **Frontend** | Small operational UI: health, job/member search, analytics snippet, AI parse demo |
+
+---
+
+## Architecture
+
+```text
+┌─────────────┐     HTTP      ┌──────────────────────────────────────────┐
+│  React UI   │ ────────────►  │  FastAPI (routers + agents + lifespan)    │
+│  (Vite)     │   /api proxy   │  MySQL ◄──► Redis cache                  │
+└─────────────┘                │  Mongo ◄── event logs, consumer state    │
+                               │  Kafka ◄── producer + background consumer │
+└──────────────────────────────────────────┘
+         ▲
+         │  optional
+    ┌────┴────┐
+    │ Ollama  │  localhost:11434
+    └─────────┘
+```
+
+---
+
+## Repository map
+
+| Path | What it is |
+|------|------------|
+| `backend/` | FastAPI app, SQLAlchemy models, Kafka, agents |
+| `backend/db/init.sql` | MySQL schema (loaded by Docker on first MySQL start) |
+| `backend/seed_data.py` | Synthetic data (`--quick` for fast smoke tests) |
+| `backend/tests/` | Pytest smoke tests (`-m integration`) |
+| `docs/openapi.json` | Static OpenAPI 3 spec (regenerate with `backend/scripts/export_openapi.py`) |
+| `docker-compose.yml` | MySQL, MongoDB, Redis, Kafka (KRaft) |
+| `frontend/` | Vite + React + TypeScript console |
+| `postman/` | Collection + **Local** environment (`base_url`) |
 
 ---
 
 ## Tech stack
 
-- **Python 3.9+** — FastAPI, Uvicorn, Pydantic v2, SQLAlchemy 2, aiokafka, redis-py, Motor/PyMongo, httpx, optional Ollama client.
-- **MySQL 8** — relational core (profiles, jobs, applications, threads, etc.).
-- **MongoDB 7** — event logs and agent-related documents.
-- **Redis 7** — cache for member/job reads and search slices.
-- **Apache Kafka 3.7 (KRaft)** — async events (`job.created`, `application.submitted`, …).
-- **Ollama** (optional, on the host) — local LLM for AI routes; code falls back if the model is unreachable.
-- **Node 18+** — Vite 8, React 19, TypeScript for the console.
+- **Python 3.9+** — FastAPI, Uvicorn, Pydantic v2, SQLAlchemy 2, aiokafka, redis-py, Motor, httpx  
+- **MySQL 8** — transactional data  
+- **MongoDB 7** — documents + consumer idempotency  
+- **Redis 7** — caching  
+- **Apache Kafka 3.7 (KRaft)** — streaming  
+- **Ollama** *(optional)* — local models (e.g. `llama3.2`)  
+- **Node 18+** — Vite 8, React 19, TypeScript  
 
 ---
 
 ## Prerequisites
 
-On macOS (similar on Linux):
-
-- Docker Desktop (or Docker Engine + Compose)
-- Python 3.9+ for the backend venv
-- Node 18+ and npm for the frontend
-- (Optional) [Ollama](https://ollama.com/) with a model such as `llama3.2` for full AI behavior
+- **Docker Desktop** (or Docker Engine + Compose plugin)  
+- **Python 3.9+**  
+- **Node 18+** and npm  
+- *(Optional)* **[Ollama](https://ollama.com/)** for full LLM behavior on AI routes  
 
 ---
 
-## Quick start
+## Setup (step by step)
 
-### 1. Clone and enter the project
+### 1. Clone and open the repo
 
 ```bash
-git clone <your-fork-or-remote-url> linkedin-agentic-ai
+git clone <your-remote-url> linkedin-agentic-ai
 cd linkedin-agentic-ai
 ```
 
 ### 2. Start infrastructure
 
-From the **repository root** (where `docker-compose.yml` lives):
+From the **repo root** (next to `docker-compose.yml`):
 
 ```bash
 docker compose up -d
 ```
 
-Wait until `linkedin-mysql` is **healthy** (`docker ps`). First boot creates the `linkedin` database and tables from `backend/db/init.sql`.
+Wait until **`linkedin-mysql`** reports **healthy** (`docker ps`).
 
-### 3. Configure the backend
+> **First run only:** MySQL initializes from `backend/db/init.sql`. If you ever need a clean database volume, stop containers and remove the named volume for MySQL (this wipes data).
+
+### 3. Backend environment
 
 ```bash
 cp .env.example backend/.env
 ```
 
-Adjust values if you changed passwords or ports in Compose. Important defaults:
+Edit `backend/.env` if you changed passwords or ports in Compose.
 
-- MySQL: `localhost:3306`, user `linkedin_user`, DB `linkedin`
-- MongoDB: `localhost:27017`, user `mongo_user`, DB `linkedin`
-- Redis: `localhost:6379`
-- Kafka: **`localhost:9094`** (the broker advertises `EXTERNAL` on 9094 for clients on your machine)
+**Critical values (defaults match this repo’s Compose file):**
 
-### 4. Python virtualenv and dependencies
+| Variable | Typical value | Notes |
+|----------|---------------|--------|
+| `MYSQL_*` | `localhost:3306`, user `linkedin_user`, DB `linkedin` | |
+| `MONGO_PORT` | **`27018`** | Published port in `docker-compose.yml` (see [Troubleshooting](#troubleshooting)) |
+| `MONGO_AUTH_SOURCE` | `admin` | Required for Docker’s root user created by `MONGO_INITDB_ROOT_*` |
+| `REDIS_HOST` / port | `localhost` / `6379` | |
+| `KAFKA_BOOTSTRAP_SERVERS` | **`localhost:9094`** | Host clients use the **EXTERNAL** listener |
+
+### 4. Python virtual environment
 
 ```bash
 cd backend
 python3 -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
+source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 5. Seed data
+### 5. Seed the database
 
-**Fast smoke test** (small dataset, non-interactive):
+Quick dataset (good for laptops and CI-style checks):
 
 ```bash
 python seed_data.py --quick --yes
 ```
 
-**Full class-scale dataset** (tens of thousands of rows; takes a while):
+Large dataset (tens of thousands of rows — be patient):
 
 ```bash
 python seed_data.py --yes
 ```
 
-Without `--yes`, the script prompts before wiping existing rows.
-
 ### 6. Run the API
-
-Still in `backend/` with the venv active:
 
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-- **Swagger UI:** http://localhost:8000/docs  
-- **ReDoc:** http://localhost:8000/redoc  
-- **Health:** http://localhost:8000/health  
+- **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)  
+- **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)  
+- **Health:** [http://localhost:8000/health](http://localhost:8000/health)  
 
-### 7. Run the React console
-
-In a second terminal:
+### 7. Run the frontend
 
 ```bash
-cd frontend
+cd ../frontend
 npm install
 npm run dev
 ```
 
-Open http://localhost:5173 — the dev server **proxies** `/api/*` to `http://127.0.0.1:8000`, so keep the API running.
+Open [http://localhost:5173](http://localhost:5173). The dev server proxies `/api` → `http://127.0.0.1:8000`.
 
-For a **production build** served separately, set `VITE_API_URL` (see `frontend/.env.example`) to your API origin.
+For a static production build, set **`VITE_API_URL`** (see `frontend/.env.example`).
+
+---
+
+## Running tests
+
+With Docker services up and `backend/.env` aligned with Compose:
+
+```bash
+cd backend
+source venv/bin/activate
+pytest tests/ -m integration -v
+```
+
+These tests spin up the app **in-process** (Starlette `TestClient`), so Kafka and Mongo connections run as in real startup. They assert:
+
+- `GET /` and `GET /health`  
+- `POST /jobs/search` and `POST /members/search`  
+- `POST /ai/parse-resume` (works with or without Ollama thanks to fallback)  
 
 ---
 
 ## API documentation
 
-1. **Interactive (recommended while developing):** start Uvicorn and use `/docs` or `/redoc`.
-2. **Static OpenAPI file:** `docs/openapi.json` — regenerate after changing routes:
+1. **Live (best while coding):** [http://localhost:8000/docs](http://localhost:8000/docs)  
+2. **Static file:** `docs/openapi.json` — open in [Swagger Editor](https://editor.swagger.io/) or feed to codegen. Regenerate:
 
    ```bash
-   cd /path/to/repo
    backend/venv/bin/python backend/scripts/export_openapi.py
    ```
 
-3. **Postman:** Import `postman/LinkedIn_Platform_API.postman_collection.json` and `postman/Local.postman_environment.json`. Select the **Local** environment so `{{base_url}}` resolves to `http://localhost:8000`.
+3. **Postman:** import `postman/LinkedIn_Platform_API.postman_collection.json` and `postman/Local.postman_environment.json`, then select the **Local** environment.
 
 ---
 
-## Project layout (backend)
+## Is everything working?
 
-- `main.py` — FastAPI app, CORS, router registration, lifespan (Kafka producer/consumer).
-- `config.py` / `.env` — settings.
-- `database.py` — SQLAlchemy engine + Motor Mongo client.
-- `cache.py` — Redis wrapper.
-- `kafka_producer.py` / `kafka_consumer.py` — event publish + consume.
-- `models/` — SQLAlchemy models.
-- `schemas/` — Pydantic request/response models.
-- `routers/` — members, recruiters, jobs, applications, messages, connections, analytics, AI.
-- `agents/` — resume parser, matcher, outreach, hiring assistant orchestration.
+After `uvicorn` is running, check:
+
+1. **`GET /health`** — `status` should be **`healthy`** when Redis, Kafka producer, and **MongoDB** are all reachable.  
+2. **Swagger** — try `POST /jobs/search` with a small JSON body.  
+3. **Logs** — a line like `Ollama not available … using regex fallback` on **`/ai/parse-resume`** is **normal** if Ollama is not installed; the response should still be `200` with parsed fields.
 
 ---
 
-## Challenges we hit during setup (so you don’t have to rediscover them)
+## Troubleshooting
 
-1. **Kafka from the host vs Docker**  
-   Inside Compose, brokers talk on `kafka:9092`. On your laptop, use **`KAFKA_BOOTSTRAP_SERVERS=localhost:9094`** so the client hits the `EXTERNAL` listener defined in `docker-compose.yml`.
+### MongoDB: `Authentication failed` in `kafka_consumer` or `/health` shows `mongodb: false`
 
-2. **MySQL init script path**  
-   The compose file mounts `./backend/db/init.sql` into `/docker-entrypoint-initdb.d/`. If tables are missing, confirm that path is correct relative to where you run `docker compose`.
+Common causes:
 
-3. **MongoDB authentication**  
-   The URI includes user/password from `.env.example`. If you see `Authentication failed` in logs, verify `MONGO_USER` / `MONGO_PASSWORD` match `MONGO_INITDB_ROOT_*` in Compose. The API may still run for MySQL-heavy routes; features that write to Mongo (e.g. event ingest) need a working auth pair.
+1. **Wrong port — local `mongod` vs Docker**  
+   Many developers run **MongoDB locally** on `27017`. Connections to `127.0.0.1:27017` can hit that process instead of the container, so credentials never match.  
+   **This repo maps the container to host port `27018`.** Set in `backend/.env`:
 
-4. **Seeder and Faker versions**  
-   Some relative date strings (e.g. `-1Y`) are not parsed consistently across Faker releases. The seeder uses explicit `timedelta` windows so it runs cleanly on the pinned `faker` in `requirements.txt`.
+   ```env
+   MONGO_PORT=27018
+   MONGO_AUTH_SOURCE=admin
+   ```
 
-5. **Ollama**  
-   AI endpoints work without Ollama but use **heuristic / rule-based** output. Install Ollama and pull `llama3.2` (or set `OLLAMA_MODEL`) for LLM-backed behavior.
+   Then `docker compose up -d` (recreate `mongodb` if you changed the mapping).
 
-6. **Frontend API base URL**  
-   In dev, use the Vite proxy (`/api`). For `npm run preview` or a static host, set `VITE_API_URL` or you’ll get network errors to the wrong origin.
+2. **Wrong auth database**  
+   Root users created by `MONGO_INITDB_ROOT_USERNAME` authenticate against the **`admin`** database. The app URI includes `authSource=admin` (see `config.py`).
+
+### Kafka: cannot connect from the host
+
+Use **`KAFKA_BOOTSTRAP_SERVERS=localhost:9094`** (the `EXTERNAL` listener in Compose). Inside Docker networks, services would use `kafka:9092`.
+
+### SQLAlchemy log noise: `ROLLBACK` after a `200 OK`
+
+Read-only requests often end the session without a commit; SQLAlchemy emits `ROLLBACK` when closing the transaction. **This is expected** and not an application error.
+
+### AI routes without Ollama
+
+Install [Ollama](https://ollama.com/), run `ollama pull llama3.2` (or set `OLLAMA_MODEL`), and ensure `OLLAMA_BASE_URL` is reachable. Until then, the API uses **heuristic / regex** parsing — still valid for demos.
+
+---
+
+## Backend layout
+
+| Module / package | Responsibility |
+|------------------|------------------|
+| `main.py` | App factory, CORS, lifespan (Kafka producer + consumer task), health |
+| `config.py` | Settings from environment |
+| `database.py` | SQLAlchemy + Motor |
+| `cache.py` | Redis |
+| `kafka_*.py` | Async producer / consumer |
+| `models/`, `schemas/` | ORM + Pydantic |
+| `routers/` | HTTP surface per domain |
+| `agents/` | Resume, match, outreach, hiring assistant |
 
 ---
 
 ## Development notes
 
-- **CORS** is permissive (`allow_origins=["*"]`) for class demos; tighten for production.
-- **Kafka consumer** runs in the same process as the API for simplicity; in production you’d usually split workers.
-- **`.env`** is gitignored; never commit real secrets.
+- **CORS** is wide open for class demos; lock it down for any public deployment.  
+- **Kafka consumer** runs in the API process for simplicity; production would typically use separate workers.  
+- **`.env`** is gitignored — copy from `.env.example` and keep secrets local.  
 
 ---
 
-## License / academic use
+## License / course use
 
-Built for **DATA236** (LinkedIn Agentic AI class project). Adapt attribution and license to your course policy.
+Built for **DATA236** (LinkedIn Agentic AI). Adjust attribution and licensing to match your course policy.
 
 ---
 
-## Contributing (team workflow)
-
-1. Branch from `main`, keep commits focused.
-2. Run `python seed_data.py --quick --yes` after schema changes.
-3. Regenerate `docs/openapi.json` when routers change.
-4. Run `npm run build` in `frontend/` before merging UI work.
-
-If something in this README drifts from the code, trust the repo — and please update the README in the same PR.
+*If this README and the code disagree, trust the code — and update both in the same change.*

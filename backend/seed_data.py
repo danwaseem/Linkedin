@@ -2,11 +2,17 @@
 LinkedIn Platform — Synthetic Data Seeder
 Generates 10,000+ records for members, recruiters, jobs, applications,
 connections, messages, and analytics events.
+
+CLI: python seed_data.py [--quick] [--yes]
+  --quick   Small dataset for local smoke tests (under a minute).
+  --yes     Skip confirmation when replacing existing data (CI / scripts).
 """
 
 import sys
+import argparse
 import random
 import json
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from faker import Faker
 from tqdm import tqdm
@@ -25,6 +31,61 @@ from models.connection import Connection
 fake = Faker()
 Faker.seed(42)
 random.seed(42)
+
+
+def _dt_between_days_ago(start_days: int) -> datetime:
+    """Faker relative strings like '-1Y' are version-sensitive; use explicit windows."""
+    end = datetime.now()
+    return fake.date_time_between(start_date=end - timedelta(days=start_days), end_date=end)
+
+
+def _date_between_days_ago(start_days: int):
+    end = datetime.now().date()
+    return fake.date_between(start_date=end - timedelta(days=start_days), end_date=end)
+
+
+@dataclass(frozen=True)
+class SeedProfile:
+    """Row counts and ID ranges for one seeding run (must stay consistent)."""
+
+    members: int
+    recruiters: int
+    jobs: int
+    applications: int
+    connections: int
+    threads: int
+    msg_per_thread: int
+    saved_jobs: int
+    profile_views: int
+    batch_size: int = 500
+
+
+PROFILE_FULL = SeedProfile(
+    members=10_000,
+    recruiters=500,
+    jobs=10_000,
+    applications=15_000,
+    connections=20_000,
+    threads=2_000,
+    msg_per_thread=3,
+    saved_jobs=5_000,
+    profile_views=30_000,
+    batch_size=500,
+)
+
+PROFILE_QUICK = SeedProfile(
+    members=60,
+    recruiters=6,
+    jobs=50,
+    applications=120,
+    connections=150,
+    threads=12,
+    msg_per_thread=3,
+    saved_jobs=40,
+    profile_views=80,
+    batch_size=100,
+)
+
 
 # ─── Constants ──────────────────────────────────────────────────
 
@@ -135,8 +196,9 @@ def generate_resume_text(title, skills, years):
     )
 
 
-def seed_members(db, count=10000):
+def seed_members(db, profile: SeedProfile):
     """Seed member profiles."""
+    count = profile.members
     print(f"\n📝 Seeding {count} members...")
     members = []
     used_emails = set()
@@ -188,7 +250,7 @@ def seed_members(db, count=10000):
         )
         members.append(member)
 
-        if len(members) >= 500:
+        if len(members) >= profile.batch_size:
             db.bulk_save_objects(members)
             db.commit()
             members = []
@@ -200,8 +262,9 @@ def seed_members(db, count=10000):
     print(f"   ✓ {count} members created")
 
 
-def seed_recruiters(db, count=500):
+def seed_recruiters(db, profile: SeedProfile):
     """Seed recruiter accounts."""
+    count = profile.recruiters
     print(f"\n👔 Seeding {count} recruiters...")
     recruiters = []
     used_emails = set()
@@ -232,10 +295,12 @@ def seed_recruiters(db, count=500):
     print(f"   ✓ {count} recruiters created")
 
 
-def seed_jobs(db, count=10000):
+def seed_jobs(db, profile: SeedProfile):
     """Seed job postings."""
+    count = profile.jobs
     print(f"\n💼 Seeding {count} job postings...")
     jobs = []
+    n_rec = max(1, profile.recruiters)
 
     for i in tqdm(range(count)):
         city, state, country = random.choice(CITIES)
@@ -244,7 +309,7 @@ def seed_jobs(db, count=10000):
 
         job = JobPosting(
             company_id=random.randint(1, 50),
-            recruiter_id=random.randint(1, 500),
+            recruiter_id=random.randint(1, n_rec),
             title=random.choice(JOB_TITLES),
             description=fake.paragraph(nb_sentences=6),
             seniority_level=random.choice(SENIORITY),
@@ -254,14 +319,14 @@ def seed_jobs(db, count=10000):
             skills_required=json.dumps(skills),
             salary_min=random.choice([80000, 100000, 120000, 150000, 180000]),
             salary_max=random.choice([120000, 150000, 180000, 220000, 300000]),
-            posted_datetime=fake.date_time_between(start_date="-6M", end_date="now"),
+            posted_datetime=_dt_between_days_ago(180),
             status=random.choice(["open"] * 8 + ["closed"] * 2),  # 80% open
             views_count=random.randint(10, 5000),
             applicants_count=0,  # Will be updated by applications
         )
         jobs.append(job)
 
-        if len(jobs) >= 500:
+        if len(jobs) >= profile.batch_size:
             db.bulk_save_objects(jobs)
             db.commit()
             jobs = []
@@ -273,15 +338,18 @@ def seed_jobs(db, count=10000):
     print(f"   ✓ {count} jobs created")
 
 
-def seed_applications(db, count=15000):
+def seed_applications(db, profile: SeedProfile):
     """Seed job applications."""
+    count = profile.applications
+    n_mem = max(1, profile.members)
+    n_job = max(1, profile.jobs)
     print(f"\n📋 Seeding {count} applications...")
     apps = []
     used_combos = set()
 
     for i in tqdm(range(count)):
-        member_id = random.randint(1, 10000)
-        job_id = random.randint(1, 10000)
+        member_id = random.randint(1, n_mem)
+        job_id = random.randint(1, n_job)
 
         combo = (member_id, job_id)
         if combo in used_combos:
@@ -293,7 +361,7 @@ def seed_applications(db, count=15000):
             member_id=member_id,
             resume_text=f"Resume for application #{i}",
             cover_letter=fake.paragraph(nb_sentences=3) if random.random() > 0.3 else None,
-            application_datetime=fake.date_time_between(start_date="-3M", end_date="now"),
+            application_datetime=_dt_between_days_ago(90),
             status=random.choices(
                 APP_STATUSES,
                 weights=[30, 25, 20, 15, 10],
@@ -303,7 +371,7 @@ def seed_applications(db, count=15000):
         )
         apps.append(app)
 
-        if len(apps) >= 500:
+        if len(apps) >= profile.batch_size:
             db.bulk_save_objects(apps)
             db.commit()
             apps = []
@@ -315,15 +383,17 @@ def seed_applications(db, count=15000):
     print(f"   ✓ {len(used_combos)} applications created")
 
 
-def seed_connections(db, count=20000):
+def seed_connections(db, profile: SeedProfile):
     """Seed connections between members."""
+    count = profile.connections
+    n_mem = max(1, profile.members)
     print(f"\n🤝 Seeding {count} connections...")
     conns = []
     used_combos = set()
 
     for i in tqdm(range(count)):
-        requester = random.randint(1, 10000)
-        receiver = random.randint(1, 10000)
+        requester = random.randint(1, n_mem)
+        receiver = random.randint(1, n_mem)
 
         if requester == receiver:
             continue
@@ -343,11 +413,11 @@ def seed_connections(db, count=20000):
             requester_id=requester,
             receiver_id=receiver,
             status=status,
-            created_at=fake.date_time_between(start_date="-1Y", end_date="now"),
+            created_at=_dt_between_days_ago(365),
         )
         conns.append(conn)
 
-        if len(conns) >= 500:
+        if len(conns) >= profile.batch_size:
             db.bulk_save_objects(conns)
             db.commit()
             conns = []
@@ -359,8 +429,12 @@ def seed_connections(db, count=20000):
     print(f"   ✓ {len(used_combos)} connections created")
 
 
-def seed_messages(db, thread_count=2000, msg_per_thread=3):
+def seed_messages(db, profile: SeedProfile):
     """Seed messaging threads and messages."""
+    thread_count = profile.threads
+    msg_per_thread = profile.msg_per_thread
+    n_mem = max(1, profile.members)
+    n_rec = max(1, profile.recruiters)
     print(f"\n💬 Seeding {thread_count} threads with ~{msg_per_thread} messages each...")
 
     for i in tqdm(range(thread_count)):
@@ -369,8 +443,8 @@ def seed_messages(db, thread_count=2000, msg_per_thread=3):
         db.flush()
 
         # Add 2 participants
-        user1_id = random.randint(1, 10000)
-        user2_id = random.randint(1, 500)
+        user1_id = random.randint(1, n_mem)
+        user2_id = random.randint(1, n_rec)
 
         tp1 = ThreadParticipant(thread_id=thread.thread_id, user_id=user1_id, user_type="member")
         tp2 = ThreadParticipant(thread_id=thread.thread_id, user_id=user2_id, user_type="recruiter")
@@ -386,26 +460,29 @@ def seed_messages(db, thread_count=2000, msg_per_thread=3):
                 sender_id=user1_id if sender_is_member else user2_id,
                 sender_type="member" if sender_is_member else "recruiter",
                 message_text=fake.paragraph(nb_sentences=random.randint(1, 3)),
-                timestamp=fake.date_time_between(start_date="-1M", end_date="now"),
+                timestamp=_dt_between_days_ago(30),
             )
             db.add(msg)
 
-        if i % 200 == 0:
+        if i % max(1, thread_count // 20) == 0:
             db.commit()
 
     db.commit()
     print(f"   ✓ {thread_count} threads with messages created")
 
 
-def seed_saved_jobs(db, count=5000):
+def seed_saved_jobs(db, profile: SeedProfile):
     """Seed saved jobs."""
+    count = profile.saved_jobs
+    n_mem = max(1, profile.members)
+    n_job = max(1, profile.jobs)
     print(f"\n⭐ Seeding {count} saved jobs...")
     saved = []
     used_combos = set()
 
     for i in tqdm(range(count)):
-        member_id = random.randint(1, 10000)
-        job_id = random.randint(1, 10000)
+        member_id = random.randint(1, n_mem)
+        job_id = random.randint(1, n_job)
 
         combo = (member_id, job_id)
         if combo in used_combos:
@@ -415,11 +492,11 @@ def seed_saved_jobs(db, count=5000):
         s = SavedJob(
             member_id=member_id,
             job_id=job_id,
-            saved_at=fake.date_time_between(start_date="-3M", end_date="now"),
+            saved_at=_dt_between_days_ago(90),
         )
         saved.append(s)
 
-        if len(saved) >= 500:
+        if len(saved) >= profile.batch_size:
             db.bulk_save_objects(saved)
             db.commit()
             saved = []
@@ -431,15 +508,17 @@ def seed_saved_jobs(db, count=5000):
     print(f"   ✓ {len(used_combos)} saved jobs created")
 
 
-def seed_profile_views(db, count=30000):
+def seed_profile_views(db, profile: SeedProfile):
     """Seed daily profile views for analytics."""
+    count = profile.profile_views
+    n_mem = max(1, profile.members)
     print(f"\n👁️ Seeding {count} profile view records...")
     views = []
     used_combos = set()
 
     for i in tqdm(range(count)):
-        member_id = random.randint(1, 10000)
-        view_date = fake.date_between(start_date="-30d", end_date="today")
+        member_id = random.randint(1, n_mem)
+        view_date = _date_between_days_ago(30)
 
         combo = (member_id, str(view_date))
         if combo in used_combos:
@@ -453,7 +532,7 @@ def seed_profile_views(db, count=30000):
         )
         views.append(v)
 
-        if len(views) >= 500:
+        if len(views) >= profile.batch_size:
             db.bulk_save_objects(views)
             db.commit()
             views = []
@@ -465,51 +544,77 @@ def seed_profile_views(db, count=30000):
     print(f"   ✓ {len(used_combos)} profile view records created")
 
 
-def main():
-    print("=" * 60)
-    print("  LinkedIn Platform — Data Seeder")
-    print("=" * 60)
+def _clear_tables(db):
+    print("🗑️  Clearing existing data...")
+    for table in [
+        "profile_views_daily", "saved_jobs", "messages",
+        "thread_participants", "threads", "connections",
+        "applications", "job_postings", "recruiters", "members",
+    ]:
+        db.execute(text(f"DELETE FROM {table}"))
+        db.execute(text(f"ALTER TABLE {table} AUTO_INCREMENT = 1"))
+    db.commit()
+    print("   ✓ All tables cleared")
 
-    db = SessionLocal()
 
-    try:
-        # Check if data already exists
-        existing = db.execute(text("SELECT COUNT(*) FROM members")).scalar()
-        if existing > 0:
-            response = input(f"\n⚠️  Database already has {existing} members. Clear and re-seed? (y/N): ")
+def run_seed(db, profile: SeedProfile, assume_yes: bool) -> None:
+    existing = db.execute(text("SELECT COUNT(*) FROM members")).scalar()
+    if existing > 0:
+        if not assume_yes:
+            response = input(
+                f"\n⚠️  Database already has {existing} members. Clear and re-seed? (y/N): "
+            )
             if response.lower() != "y":
                 print("Aborted.")
                 return
+        _clear_tables(db)
 
-            print("🗑️  Clearing existing data...")
-            for table in [
-                "profile_views_daily", "saved_jobs", "messages",
-                "thread_participants", "threads", "connections",
-                "applications", "job_postings", "recruiters", "members",
-            ]:
-                db.execute(text(f"DELETE FROM {table}"))
-                db.execute(text(f"ALTER TABLE {table} AUTO_INCREMENT = 1"))
-            db.commit()
-            print("   ✓ All tables cleared")
+    seed_members(db, profile)
+    seed_recruiters(db, profile)
+    seed_jobs(db, profile)
+    seed_applications(db, profile)
+    seed_connections(db, profile)
+    seed_messages(db, profile)
+    seed_saved_jobs(db, profile)
+    seed_profile_views(db, profile)
 
-        seed_members(db, 10000)
-        seed_recruiters(db, 500)
-        seed_jobs(db, 10000)
-        seed_applications(db, 15000)
-        seed_connections(db, 20000)
-        seed_messages(db, 2000, 3)
-        seed_saved_jobs(db, 5000)
-        seed_profile_views(db, 30000)
+    print("\n" + "=" * 60)
+    print("  ✅ Seeding complete!")
+    print("=" * 60)
 
-        print("\n" + "=" * 60)
-        print("  ✅ Seeding complete!")
-        print("=" * 60)
+    for table in [
+        "members", "recruiters", "job_postings", "applications", "connections",
+        "threads", "messages", "saved_jobs", "profile_views_daily",
+    ]:
+        cnt = db.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
+        print(f"  {table}: {cnt:,} records")
 
-        # Print summary
-        for table in ["members", "recruiters", "job_postings", "applications", "connections", "threads", "messages", "saved_jobs", "profile_views_daily"]:
-            count = db.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
-            print(f"  {table}: {count:,} records")
 
+def main():
+    parser = argparse.ArgumentParser(description="Seed LinkedIn platform MySQL tables.")
+    parser.add_argument(
+        "--quick",
+        action="store_true",
+        help="Use a small dataset for fast local verification.",
+    )
+    parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Do not prompt; clear existing rows and re-seed if needed.",
+    )
+    args = parser.parse_args()
+    profile = PROFILE_QUICK if args.quick else PROFILE_FULL
+
+    print("=" * 60)
+    print("  LinkedIn Platform — Data Seeder")
+    if args.quick:
+        print("  (quick profile)")
+    print("=" * 60)
+
+    db = SessionLocal()
+    try:
+        run_seed(db, profile, assume_yes=args.yes)
     finally:
         db.close()
 

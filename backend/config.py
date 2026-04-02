@@ -4,6 +4,8 @@ Centralized configuration using environment variables with sensible defaults.
 """
 
 import os
+from urllib.parse import quote_plus
+
 from pydantic_settings import BaseSettings
 from typing import Optional
 
@@ -32,16 +34,20 @@ class Settings(BaseSettings):
 
     # ─── MongoDB ────────────────────────────────────
     MONGO_HOST: str = os.getenv("MONGO_HOST", "localhost")
-    MONGO_PORT: int = int(os.getenv("MONGO_PORT", "27017"))
+    # Default 27018 matches docker-compose (published port) to avoid local mongod on 27017.
+    MONGO_PORT: int = int(os.getenv("MONGO_PORT", "27018"))
     MONGO_USER: str = os.getenv("MONGO_USER", "mongo_user")
     MONGO_PASSWORD: str = os.getenv("MONGO_PASSWORD", "mongo_pass")
     MONGO_DATABASE: str = os.getenv("MONGO_DATABASE", "linkedin")
+    MONGO_AUTH_SOURCE: str = os.getenv("MONGO_AUTH_SOURCE", "admin")
 
     @property
     def MONGO_URL(self) -> str:
+        user = quote_plus(self.MONGO_USER)
+        password = quote_plus(self.MONGO_PASSWORD)
         return (
-            f"mongodb://{self.MONGO_USER}:{self.MONGO_PASSWORD}"
-            f"@{self.MONGO_HOST}:{self.MONGO_PORT}"
+            f"mongodb://{user}:{password}@{self.MONGO_HOST}:{self.MONGO_PORT}"
+            f"/?authSource={quote_plus(self.MONGO_AUTH_SOURCE)}"
         )
 
     # ─── Redis ──────────────────────────────────────

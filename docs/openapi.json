@@ -1,0 +1,4237 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "LinkedIn Agentic AI Platform",
+    "description": "\n## LinkedIn Agentic AI Platform API\n\nA distributed LinkedIn-style platform with microservices, Kafka event streaming,\nRedis caching, and Agentic AI workflows.\n\n### Services\n- **Profile Service** \u2014 Member CRUD and search (`/members/*`)\n- **Recruiter Service** \u2014 Recruiter management (`/recruiters/*`)\n- **Job Service** \u2014 Job postings CRUD, search, and save (`/jobs/*`)\n- **Application Service** \u2014 Job applications and status management (`/applications/*`)\n- **Messaging Service** \u2014 Threads and messages (`/threads/*`, `/messages/*`)\n- **Connection Service** \u2014 Connection requests and management (`/connections/*`)\n- **Analytics Service** \u2014 Events, dashboards, and metrics (`/events/*`, `/analytics/*`)\n- **AI Agent Service** \u2014 Agentic AI workflows with Ollama (`/ai/*`)\n\n### Architecture\n- **MySQL** \u2014 Transactional data (profiles, jobs, applications)\n- **MongoDB** \u2014 Event logs, agent traces, unstructured data\n- **Redis** \u2014 SQL query caching and session management\n- **Kafka** \u2014 Async event streaming and agent orchestration\n- **Ollama** \u2014 Local LLM for AI agent skills\n    ",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/members/create": {
+      "post": {
+        "tags": [
+          "Profile Service"
+        ],
+        "summary": "Create a new member profile",
+        "description": "Create a new member profile with all attributes.\nReturns an error if the email already exists (duplicate prevention).",
+        "operationId": "create_member_members_create_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/members/get": {
+      "post": {
+        "tags": [
+          "Profile Service"
+        ],
+        "summary": "Get member profile by ID",
+        "description": "Retrieve a member's full profile by member_id.\nUses Redis caching for frequently accessed profiles.",
+        "operationId": "get_member_members_get_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberGet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/members/update": {
+      "post": {
+        "tags": [
+          "Profile Service"
+        ],
+        "summary": "Update member profile fields",
+        "description": "Update specific fields of a member's profile.\nOnly non-null fields in the request will be updated.",
+        "operationId": "update_member_members_update_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/members/delete": {
+      "post": {
+        "tags": [
+          "Profile Service"
+        ],
+        "summary": "Delete a member profile",
+        "description": "Permanently delete a member profile and all associated data.",
+        "operationId": "delete_member_members_delete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberDelete"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/members/search": {
+      "post": {
+        "tags": [
+          "Profile Service"
+        ],
+        "summary": "Search members by filters",
+        "description": "Search members by keyword (name, headline, about), skill, or location.\nResults are paginated and cached for performance.",
+        "operationId": "search_members_members_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberSearch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recruiters/create": {
+      "post": {
+        "tags": [
+          "Recruiter Service"
+        ],
+        "summary": "Create a new recruiter",
+        "description": "Create a new recruiter/employer admin account.",
+        "operationId": "create_recruiter_recruiters_create_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecruiterCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecruiterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recruiters/get": {
+      "post": {
+        "tags": [
+          "Recruiter Service"
+        ],
+        "summary": "Get recruiter by ID",
+        "description": "Retrieve a recruiter's profile by recruiter_id.",
+        "operationId": "get_recruiter_recruiters_get_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecruiterGet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecruiterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recruiters/update": {
+      "post": {
+        "tags": [
+          "Recruiter Service"
+        ],
+        "summary": "Update recruiter fields",
+        "description": "Update specific fields of a recruiter's profile.",
+        "operationId": "update_recruiter_recruiters_update_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecruiterUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecruiterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recruiters/delete": {
+      "post": {
+        "tags": [
+          "Recruiter Service"
+        ],
+        "summary": "Delete a recruiter",
+        "description": "Permanently delete a recruiter account.",
+        "operationId": "delete_recruiter_recruiters_delete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecruiterDelete"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecruiterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/create": {
+      "post": {
+        "tags": [
+          "Job Service"
+        ],
+        "summary": "Create a new job posting",
+        "description": "Create a new job posting. The recruiter_id must reference an existing recruiter.\nPublishes a job.created event to Kafka.",
+        "operationId": "create_job_jobs_create_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/get": {
+      "post": {
+        "tags": [
+          "Job Service"
+        ],
+        "summary": "Get job posting by ID",
+        "description": "Retrieve a job posting's full details by job_id. Publishes a job.viewed event.",
+        "operationId": "get_job_jobs_get_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobGet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/update": {
+      "post": {
+        "tags": [
+          "Job Service"
+        ],
+        "summary": "Update job posting fields",
+        "description": "Update specific fields of a job posting.",
+        "operationId": "update_job_jobs_update_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/search": {
+      "post": {
+        "tags": [
+          "Job Service"
+        ],
+        "summary": "Search and filter job postings",
+        "description": "Search job postings by keyword, location, type, work mode, seniority, and skills.\nResults are paginated and cached for 60 seconds.",
+        "operationId": "search_jobs_jobs_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobSearch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/close": {
+      "post": {
+        "tags": [
+          "Job Service"
+        ],
+        "summary": "Close a job posting",
+        "description": "Close a job posting (open \u2192 closed). Applications to closed jobs will be rejected.",
+        "operationId": "close_job_jobs_close_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobClose"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/byRecruiter": {
+      "post": {
+        "tags": [
+          "Job Service"
+        ],
+        "summary": "List jobs by recruiter",
+        "description": "List all job postings created by a specific recruiter.",
+        "operationId": "jobs_by_recruiter_jobs_byRecruiter_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobByRecruiter"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/save": {
+      "post": {
+        "tags": [
+          "Job Service"
+        ],
+        "summary": "Save a job for later",
+        "description": "Save a job posting to a member's saved list.",
+        "operationId": "save_job_jobs_save_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveJobRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/applications/submit": {
+      "post": {
+        "tags": [
+          "Application Service"
+        ],
+        "summary": "Submit a job application",
+        "description": "Submit an application to a job posting.\nHandles: duplicate application, closed job, and missing member/job errors.",
+        "operationId": "submit_application_applications_submit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationSubmit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/applications/get": {
+      "post": {
+        "tags": [
+          "Application Service"
+        ],
+        "summary": "Get application details",
+        "description": "Retrieve an application's full details by application_id.",
+        "operationId": "get_application_applications_get_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationGet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/applications/byJob": {
+      "post": {
+        "tags": [
+          "Application Service"
+        ],
+        "summary": "List applications for a job",
+        "description": "List all applications for a specific job posting (recruiter view).",
+        "operationId": "applications_by_job_applications_byJob_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationByJob"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/applications/byMember": {
+      "post": {
+        "tags": [
+          "Application Service"
+        ],
+        "summary": "List applications by member",
+        "description": "List all applications submitted by a specific member.",
+        "operationId": "applications_by_member_applications_byMember_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationByMember"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/applications/updateStatus": {
+      "post": {
+        "tags": [
+          "Application Service"
+        ],
+        "summary": "Update application status",
+        "description": "Update the status of an application.\nValid statuses: submitted, reviewing, rejected, interview, offer.",
+        "operationId": "update_application_status_applications_updateStatus_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationUpdateStatus"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/applications/addNote": {
+      "post": {
+        "tags": [
+          "Application Service"
+        ],
+        "summary": "Add recruiter note",
+        "description": "Add a recruiter note or decision rationale to an application.",
+        "operationId": "add_note_applications_addNote_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationAddNote"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/threads/open": {
+      "post": {
+        "tags": [
+          "Messaging Service"
+        ],
+        "summary": "Open/create a message thread",
+        "description": "Create a new messaging thread between participants.\nEach participant is identified by user_id and user_type (member/recruiter).",
+        "operationId": "open_thread_threads_open_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThreadOpen"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/threads/get": {
+      "post": {
+        "tags": [
+          "Messaging Service"
+        ],
+        "summary": "Get thread metadata",
+        "description": "Retrieve thread metadata and participant list.",
+        "operationId": "get_thread_threads_get_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThreadGet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/threads/byUser": {
+      "post": {
+        "tags": [
+          "Messaging Service"
+        ],
+        "summary": "List user's threads",
+        "description": "List all messaging threads for a specific user.",
+        "operationId": "threads_by_user_threads_byUser_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThreadsByUser"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/messages/send": {
+      "post": {
+        "tags": [
+          "Messaging Service"
+        ],
+        "summary": "Send a message",
+        "description": "Send a message in a thread. Includes retry logic for failure handling.\nPublishes a message.sent event to Kafka.",
+        "operationId": "send_message_messages_send_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageSend"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/messages/list": {
+      "post": {
+        "tags": [
+          "Messaging Service"
+        ],
+        "summary": "List messages in a thread",
+        "description": "List all messages in a thread, ordered by timestamp (newest first).",
+        "operationId": "list_messages_messages_list_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageList"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/connections/request": {
+      "post": {
+        "tags": [
+          "Connection Service"
+        ],
+        "summary": "Send a connection request",
+        "description": "Send a connection request from one member to another.\nHandles: self-connection, duplicate request, and already connected errors.",
+        "operationId": "send_connection_request_connections_request_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/connections/accept": {
+      "post": {
+        "tags": [
+          "Connection Service"
+        ],
+        "summary": "Accept a connection request",
+        "description": "Accept a pending connection request. Updates both members' connection counts.",
+        "operationId": "accept_connection_connections_accept_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionAccept"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/connections/reject": {
+      "post": {
+        "tags": [
+          "Connection Service"
+        ],
+        "summary": "Reject a connection request",
+        "description": "Reject a pending connection request.",
+        "operationId": "reject_connection_connections_reject_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionReject"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/connections/list": {
+      "post": {
+        "tags": [
+          "Connection Service"
+        ],
+        "summary": "List user's connections",
+        "description": "List all accepted connections for a member.",
+        "operationId": "list_connections_connections_list_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionList"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/connections/mutual": {
+      "post": {
+        "tags": [
+          "Connection Service"
+        ],
+        "summary": "Find mutual connections",
+        "description": "Find mutual connections between two members (extra credit).",
+        "operationId": "mutual_connections_connections_mutual_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MutualConnections"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/ingest": {
+      "post": {
+        "tags": [
+          "Analytics Service"
+        ],
+        "summary": "Ingest tracking events",
+        "description": "Ingest a tracking event from UI or services.\nEvents are stored in MongoDB and published to Kafka for async processing.",
+        "operationId": "ingest_event_events_ingest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventIngest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/jobs/top": {
+      "post": {
+        "tags": [
+          "Analytics Service"
+        ],
+        "summary": "Top jobs by metric",
+        "description": "Get top job postings by metric (applications, views, or saves).\nUsed for recruiter dashboard analytics.",
+        "operationId": "top_jobs_analytics_jobs_top_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopJobsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/funnel": {
+      "post": {
+        "tags": [
+          "Analytics Service"
+        ],
+        "summary": "Job application funnel",
+        "description": "Get the view \u2192 save \u2192 apply funnel for a specific job posting.\nData sourced from MongoDB event logs and MySQL records.",
+        "operationId": "job_funnel_analytics_funnel_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FunnelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/geo": {
+      "post": {
+        "tags": [
+          "Analytics Service"
+        ],
+        "summary": "Geographic distribution",
+        "description": "Get the city/state distribution of applicants for a specific job posting.",
+        "operationId": "geo_distribution_analytics_geo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GeoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/member/dashboard": {
+      "post": {
+        "tags": [
+          "Analytics Service"
+        ],
+        "summary": "Member dashboard metrics",
+        "description": "Get member dashboard metrics: profile views (last 30 days) and application status breakdown.",
+        "operationId": "member_dashboard_analytics_member_dashboard_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberDashboardRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/analyze-candidates": {
+      "post": {
+        "tags": [
+          "AI Agent Service"
+        ],
+        "summary": "Start candidate analysis workflow",
+        "description": "Start the Hiring Assistant multi-step AI workflow:\n1. Parse resumes for all candidates\n2. Match candidates against job requirements\n3. Rank and shortlist top N candidates\n4. Generate personalized outreach drafts\n\nReturns a task_id to track progress via /ai/task-status or WebSocket.",
+        "operationId": "analyze_candidates_ai_analyze_candidates_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeCandidatesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/task-status": {
+      "post": {
+        "tags": [
+          "AI Agent Service"
+        ],
+        "summary": "Get AI task status",
+        "description": "Check the current status and progress of an AI task.",
+        "operationId": "task_status_ai_task_status_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/approve": {
+      "post": {
+        "tags": [
+          "AI Agent Service"
+        ],
+        "summary": "Approve or reject AI output",
+        "description": "Human-in-the-loop: approve or reject the AI-generated shortlist and outreach drafts.\nThe recruiter must review the AI output before any action is taken.",
+        "operationId": "approve_output_ai_approve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/parse-resume": {
+      "post": {
+        "tags": [
+          "AI Agent Service"
+        ],
+        "summary": "Parse a resume (standalone skill)",
+        "description": "Standalone resume parsing endpoint. Uses Ollama LLM with regex fallback.\nExtracts: skills, experience, education, contact info, summary.",
+        "operationId": "parse_resume_ai_parse_resume_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseResumeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/match": {
+      "post": {
+        "tags": [
+          "AI Agent Service"
+        ],
+        "summary": "Match a candidate to a job (standalone skill)",
+        "description": "Standalone job-candidate matching endpoint.\nComputes match score based on skills overlap (50%), location (20%), seniority (30%).",
+        "operationId": "match_candidate_ai_match_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/tasks/list": {
+      "post": {
+        "tags": [
+          "AI Agent Service"
+        ],
+        "summary": "List all AI tasks",
+        "description": "List all active and recent AI tasks.",
+        "operationId": "list_tasks_ai_tasks_list_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Root",
+        "description": "Health check endpoint.",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health Check",
+        "description": "Detailed health check with dependency status.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AIResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "AIResponse"
+      },
+      "AnalyticsResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "AnalyticsResponse"
+      },
+      "AnalyzeCandidatesRequest": {
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id",
+            "description": "Job posting ID to analyze candidates for"
+          },
+          "top_n": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Top N",
+            "description": "Number of top candidates to shortlist",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id"
+        ],
+        "title": "AnalyzeCandidatesRequest",
+        "examples": [
+          {
+            "job_id": 1,
+            "top_n": 5
+          }
+        ]
+      },
+      "ApplicationAddNote": {
+        "properties": {
+          "application_id": {
+            "type": "integer",
+            "title": "Application Id"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "description": "Recruiter note or decision rationale"
+          }
+        },
+        "type": "object",
+        "required": [
+          "application_id",
+          "note"
+        ],
+        "title": "ApplicationAddNote"
+      },
+      "ApplicationByJob": {
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page",
+            "default": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "default": 20
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id"
+        ],
+        "title": "ApplicationByJob"
+      },
+      "ApplicationByMember": {
+        "properties": {
+          "member_id": {
+            "type": "integer",
+            "title": "Member Id"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page",
+            "default": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "default": 20
+          }
+        },
+        "type": "object",
+        "required": [
+          "member_id"
+        ],
+        "title": "ApplicationByMember"
+      },
+      "ApplicationGet": {
+        "properties": {
+          "application_id": {
+            "type": "integer",
+            "title": "Application Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "application_id"
+        ],
+        "title": "ApplicationGet"
+      },
+      "ApplicationListResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "page_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "ApplicationListResponse"
+      },
+      "ApplicationResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "ApplicationResponse"
+      },
+      "ApplicationSubmit": {
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id",
+            "description": "Job to apply for"
+          },
+          "member_id": {
+            "type": "integer",
+            "title": "Member Id",
+            "description": "Applicant member ID"
+          },
+          "resume_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resume Url"
+          },
+          "resume_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resume Text"
+          },
+          "cover_letter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Letter"
+          },
+          "answers": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answers",
+            "description": "Custom question answers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "member_id"
+        ],
+        "title": "ApplicationSubmit",
+        "examples": [
+          {
+            "answers": {
+              "willing_to_relocate": "yes",
+              "years_experience": "5+"
+            },
+            "cover_letter": "I am excited to apply for the Senior Backend Engineer position...",
+            "job_id": 1,
+            "member_id": 1,
+            "resume_text": "Experienced software engineer with expertise in Python, FastAPI..."
+          }
+        ]
+      },
+      "ApplicationUpdateStatus": {
+        "properties": {
+          "application_id": {
+            "type": "integer",
+            "title": "Application Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "New status: submitted, reviewing, rejected, interview, offer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "application_id",
+          "status"
+        ],
+        "title": "ApplicationUpdateStatus"
+      },
+      "ApproveRequest": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id",
+            "description": "AI task ID to approve/reject"
+          },
+          "approved": {
+            "type": "boolean",
+            "title": "Approved",
+            "description": "True to approve, False to reject"
+          },
+          "feedback": {
+            "type": "string",
+            "title": "Feedback",
+            "description": "Optional feedback from the recruiter",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "approved"
+        ],
+        "title": "ApproveRequest"
+      },
+      "ConnectionAccept": {
+        "properties": {
+          "connection_id": {
+            "type": "integer",
+            "title": "Connection Id",
+            "description": "Connection request ID to accept"
+          }
+        },
+        "type": "object",
+        "required": [
+          "connection_id"
+        ],
+        "title": "ConnectionAccept"
+      },
+      "ConnectionList": {
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "title": "User Id",
+            "description": "Member ID"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page",
+            "default": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "default": 20
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "ConnectionList"
+      },
+      "ConnectionListResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "ConnectionListResponse"
+      },
+      "ConnectionReject": {
+        "properties": {
+          "connection_id": {
+            "type": "integer",
+            "title": "Connection Id",
+            "description": "Connection request ID to reject"
+          }
+        },
+        "type": "object",
+        "required": [
+          "connection_id"
+        ],
+        "title": "ConnectionReject"
+      },
+      "ConnectionRequest": {
+        "properties": {
+          "requester_id": {
+            "type": "integer",
+            "title": "Requester Id",
+            "description": "Member sending the request"
+          },
+          "receiver_id": {
+            "type": "integer",
+            "title": "Receiver Id",
+            "description": "Member receiving the request"
+          }
+        },
+        "type": "object",
+        "required": [
+          "requester_id",
+          "receiver_id"
+        ],
+        "title": "ConnectionRequest",
+        "examples": [
+          {
+            "receiver_id": 2,
+            "requester_id": 1
+          }
+        ]
+      },
+      "ConnectionResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "ConnectionResponse"
+      },
+      "EventIngest": {
+        "properties": {
+          "event_type": {
+            "type": "string",
+            "title": "Event Type",
+            "description": "Type: job.viewed, job.saved, application.submitted, etc."
+          },
+          "actor_id": {
+            "type": "string",
+            "title": "Actor Id",
+            "description": "Member or recruiter ID performing the action"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type",
+            "description": "Entity type: job, application, thread, connection"
+          },
+          "entity_id": {
+            "type": "string",
+            "title": "Entity Id",
+            "description": "Entity ID"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payload",
+            "description": "Additional event data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_type",
+          "actor_id",
+          "entity_type",
+          "entity_id"
+        ],
+        "title": "EventIngest",
+        "examples": [
+          {
+            "actor_id": "42",
+            "entity_id": "101",
+            "entity_type": "job",
+            "event_type": "job.viewed",
+            "payload": {
+              "session_id": "abc123",
+              "source": "search_results"
+            }
+          }
+        ]
+      },
+      "FunnelRequest": {
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id"
+          },
+          "window_days": {
+            "type": "integer",
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Window Days",
+            "default": 30
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id"
+        ],
+        "title": "FunnelRequest"
+      },
+      "GeoRequest": {
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id"
+          },
+          "window_days": {
+            "type": "integer",
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Window Days",
+            "default": 30
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id"
+        ],
+        "title": "GeoRequest"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "JobByRecruiter": {
+        "properties": {
+          "recruiter_id": {
+            "type": "integer",
+            "title": "Recruiter Id",
+            "description": "Recruiter ID"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page",
+            "default": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "default": 20
+          }
+        },
+        "type": "object",
+        "required": [
+          "recruiter_id"
+        ],
+        "title": "JobByRecruiter"
+      },
+      "JobClose": {
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id",
+            "description": "Job ID to close"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id"
+        ],
+        "title": "JobClose"
+      },
+      "JobCreate": {
+        "properties": {
+          "recruiter_id": {
+            "type": "integer",
+            "title": "Recruiter Id",
+            "description": "ID of the recruiter posting the job"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "company_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
+          "seniority_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seniority Level",
+            "description": "e.g., Entry, Mid, Senior, Director"
+          },
+          "employment_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employment Type",
+            "description": "e.g., Full-time, Part-time, Contract, Internship"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "work_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Work Mode",
+            "description": "remote, hybrid, or onsite",
+            "default": "onsite"
+          },
+          "skills_required": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills Required"
+          },
+          "salary_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salary Min"
+          },
+          "salary_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salary Max"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recruiter_id",
+          "title"
+        ],
+        "title": "JobCreate",
+        "examples": [
+          {
+            "description": "We are looking for an experienced backend engineer to join our platform team...",
+            "employment_type": "Full-time",
+            "location": "San Francisco, CA",
+            "recruiter_id": 1,
+            "salary_max": 220000,
+            "salary_min": 150000,
+            "seniority_level": "Senior",
+            "skills_required": [
+              "Python",
+              "FastAPI",
+              "PostgreSQL",
+              "Kafka"
+            ],
+            "title": "Senior Backend Engineer",
+            "work_mode": "hybrid"
+          }
+        ]
+      },
+      "JobGet": {
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id",
+            "description": "Job ID to retrieve"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id"
+        ],
+        "title": "JobGet"
+      },
+      "JobListResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "page_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "JobListResponse"
+      },
+      "JobResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "JobResponse"
+      },
+      "JobSearch": {
+        "properties": {
+          "keyword": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keyword",
+            "description": "Search in title and description"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "employment_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employment Type"
+          },
+          "work_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Work Mode"
+          },
+          "seniority_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seniority Level"
+          },
+          "skills": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills",
+            "description": "Filter by required skills"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page",
+            "default": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "default": 20
+          }
+        },
+        "type": "object",
+        "title": "JobSearch"
+      },
+      "JobUpdate": {
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "seniority_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seniority Level"
+          },
+          "employment_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employment Type"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "work_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Work Mode"
+          },
+          "skills_required": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills Required"
+          },
+          "salary_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salary Min"
+          },
+          "salary_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salary Max"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id"
+        ],
+        "title": "JobUpdate"
+      },
+      "MatchRequest": {
+        "properties": {
+          "job_data": {
+            "type": "object",
+            "title": "Job Data",
+            "description": "Job posting data"
+          },
+          "candidate_data": {
+            "type": "object",
+            "title": "Candidate Data",
+            "description": "Candidate profile data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_data",
+          "candidate_data"
+        ],
+        "title": "MatchRequest",
+        "examples": [
+          {
+            "candidate_data": {
+              "location_city": "San Jose",
+              "location_state": "California",
+              "member_id": 1,
+              "skills": [
+                "Python",
+                "FastAPI",
+                "Docker",
+                "AWS"
+              ]
+            },
+            "job_data": {
+              "job_id": 1,
+              "location": "San Francisco, CA",
+              "seniority_level": "Senior",
+              "skills_required": [
+                "Python",
+                "FastAPI",
+                "Kafka"
+              ],
+              "title": "Senior Backend Engineer",
+              "work_mode": "hybrid"
+            }
+          }
+        ]
+      },
+      "MemberCreate": {
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "First Name",
+            "description": "First name"
+          },
+          "last_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Last Name",
+            "description": "Last name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "description": "Email address (must be unique)"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone",
+            "description": "Phone number"
+          },
+          "location_city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location City",
+            "description": "City"
+          },
+          "location_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location State",
+            "description": "State/Province"
+          },
+          "location_country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Country",
+            "description": "Country"
+          },
+          "headline": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headline",
+            "description": "Profile headline"
+          },
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "About",
+            "description": "About/Summary section"
+          },
+          "experience": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experience",
+            "description": "Work experience list"
+          },
+          "education": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Education",
+            "description": "Education list"
+          },
+          "skills": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills",
+            "description": "List of skills"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url",
+            "description": "Profile photo URL"
+          },
+          "resume_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resume Text",
+            "description": "Resume text content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "first_name",
+          "last_name",
+          "email"
+        ],
+        "title": "MemberCreate",
+        "description": "Request body for creating a new member.",
+        "examples": [
+          {
+            "about": "Passionate about building scalable systems...",
+            "education": [
+              {
+                "degree": "MS Computer Science",
+                "school": "Stanford",
+                "year": 2020
+              }
+            ],
+            "email": "john.doe@example.com",
+            "experience": [
+              {
+                "company": "Google",
+                "title": "Senior SWE",
+                "years": 3
+              }
+            ],
+            "first_name": "John",
+            "headline": "Senior Software Engineer at Google",
+            "last_name": "Doe",
+            "location_city": "San Jose",
+            "location_country": "USA",
+            "location_state": "California",
+            "phone": "+1-555-0100",
+            "resume_text": "Experienced software engineer with 8+ years...",
+            "skills": [
+              "Python",
+              "Java",
+              "Kubernetes",
+              "AWS"
+            ]
+          }
+        ]
+      },
+      "MemberDashboardRequest": {
+        "properties": {
+          "member_id": {
+            "type": "integer",
+            "title": "Member Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "member_id"
+        ],
+        "title": "MemberDashboardRequest"
+      },
+      "MemberDelete": {
+        "properties": {
+          "member_id": {
+            "type": "integer",
+            "title": "Member Id",
+            "description": "Member ID to delete"
+          }
+        },
+        "type": "object",
+        "required": [
+          "member_id"
+        ],
+        "title": "MemberDelete",
+        "description": "Request body for deleting a member."
+      },
+      "MemberGet": {
+        "properties": {
+          "member_id": {
+            "type": "integer",
+            "title": "Member Id",
+            "description": "Member ID to retrieve"
+          }
+        },
+        "type": "object",
+        "required": [
+          "member_id"
+        ],
+        "title": "MemberGet",
+        "description": "Request body for getting a member profile."
+      },
+      "MemberListResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "page_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "MemberListResponse",
+        "description": "Response for member list/search results."
+      },
+      "MemberResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "MemberResponse",
+        "description": "Standard member response."
+      },
+      "MemberSearch": {
+        "properties": {
+          "keyword": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keyword",
+            "description": "Search keyword (name, headline, about)"
+          },
+          "skill": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skill",
+            "description": "Filter by skill"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location",
+            "description": "Filter by city or state"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page",
+            "description": "Page number",
+            "default": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "description": "Results per page",
+            "default": 20
+          }
+        },
+        "type": "object",
+        "title": "MemberSearch",
+        "description": "Request body for searching members."
+      },
+      "MemberUpdate": {
+        "properties": {
+          "member_id": {
+            "type": "integer",
+            "title": "Member Id",
+            "description": "Member ID to update"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "location_city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location City"
+          },
+          "location_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location State"
+          },
+          "location_country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Country"
+          },
+          "headline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headline"
+          },
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "About"
+          },
+          "experience": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experience"
+          },
+          "education": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Education"
+          },
+          "skills": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
+          },
+          "resume_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resume Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "member_id"
+        ],
+        "title": "MemberUpdate",
+        "description": "Request body for updating member fields."
+      },
+      "MessageList": {
+        "properties": {
+          "thread_id": {
+            "type": "integer",
+            "title": "Thread Id"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page",
+            "default": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "default": 50
+          }
+        },
+        "type": "object",
+        "required": [
+          "thread_id"
+        ],
+        "title": "MessageList"
+      },
+      "MessageListResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "MessageListResponse"
+      },
+      "MessageResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "MessageResponse"
+      },
+      "MessageSend": {
+        "properties": {
+          "thread_id": {
+            "type": "integer",
+            "title": "Thread Id"
+          },
+          "sender_id": {
+            "type": "integer",
+            "title": "Sender Id"
+          },
+          "sender_type": {
+            "type": "string",
+            "title": "Sender Type",
+            "description": "member or recruiter",
+            "default": "member"
+          },
+          "message_text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Message Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "thread_id",
+          "sender_id",
+          "message_text"
+        ],
+        "title": "MessageSend",
+        "examples": [
+          {
+            "message_text": "Hi, I wanted to follow up on my application for the Backend Engineer role.",
+            "sender_id": 1,
+            "sender_type": "member",
+            "thread_id": 1
+          }
+        ]
+      },
+      "MutualConnections": {
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "title": "User Id",
+            "description": "First member ID"
+          },
+          "other_id": {
+            "type": "integer",
+            "title": "Other Id",
+            "description": "Second member ID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "other_id"
+        ],
+        "title": "MutualConnections"
+      },
+      "ParseResumeRequest": {
+        "properties": {
+          "resume_text": {
+            "type": "string",
+            "minLength": 10,
+            "title": "Resume Text",
+            "description": "Resume text to parse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resume_text"
+        ],
+        "title": "ParseResumeRequest",
+        "examples": [
+          {
+            "resume_text": "John Doe | Senior Software Engineer | john@example.com\n\n8+ years of experience in Python, Java, and cloud technologies. Led a team of 5 engineers at Google working on distributed systems using Kubernetes and AWS. MS in Computer Science from Stanford University (2018). Skills: Python, Java, Kubernetes, Docker, AWS, GCP, FastAPI, PostgreSQL, Kafka, Microservices."
+          }
+        ]
+      },
+      "RecruiterCreate": {
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "First Name"
+          },
+          "last_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Last Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "description": "Unique email address"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "company_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "company_industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Industry"
+          },
+          "company_size": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Size"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role",
+            "default": "recruiter"
+          },
+          "access_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Level",
+            "default": "standard"
+          }
+        },
+        "type": "object",
+        "required": [
+          "first_name",
+          "last_name",
+          "email"
+        ],
+        "title": "RecruiterCreate",
+        "examples": [
+          {
+            "access_level": "admin",
+            "company_industry": "Technology",
+            "company_name": "TechCorp Inc.",
+            "company_size": "1000-5000",
+            "email": "sarah.johnson@techcorp.com",
+            "first_name": "Sarah",
+            "last_name": "Johnson",
+            "phone": "+1-555-0200",
+            "role": "senior_recruiter"
+          }
+        ]
+      },
+      "RecruiterDelete": {
+        "properties": {
+          "recruiter_id": {
+            "type": "integer",
+            "title": "Recruiter Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recruiter_id"
+        ],
+        "title": "RecruiterDelete"
+      },
+      "RecruiterGet": {
+        "properties": {
+          "recruiter_id": {
+            "type": "integer",
+            "title": "Recruiter Id",
+            "description": "Recruiter ID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recruiter_id"
+        ],
+        "title": "RecruiterGet"
+      },
+      "RecruiterResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "RecruiterResponse"
+      },
+      "RecruiterUpdate": {
+        "properties": {
+          "recruiter_id": {
+            "type": "integer",
+            "title": "Recruiter Id"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "company_industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Industry"
+          },
+          "company_size": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Size"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "access_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Level"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recruiter_id"
+        ],
+        "title": "RecruiterUpdate"
+      },
+      "SaveJobRequest": {
+        "properties": {
+          "member_id": {
+            "type": "integer",
+            "title": "Member Id"
+          },
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "member_id",
+          "job_id"
+        ],
+        "title": "SaveJobRequest"
+      },
+      "TaskStatusRequest": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id",
+            "description": "AI task ID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id"
+        ],
+        "title": "TaskStatusRequest"
+      },
+      "ThreadGet": {
+        "properties": {
+          "thread_id": {
+            "type": "integer",
+            "title": "Thread Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "thread_id"
+        ],
+        "title": "ThreadGet"
+      },
+      "ThreadOpen": {
+        "properties": {
+          "participant_ids": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Participant Ids",
+            "description": "List of participants, each with user_id and user_type (member/recruiter)"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject",
+            "description": "Thread subject line"
+          }
+        },
+        "type": "object",
+        "required": [
+          "participant_ids"
+        ],
+        "title": "ThreadOpen",
+        "examples": [
+          {
+            "participant_ids": [
+              {
+                "user_id": 1,
+                "user_type": "member"
+              },
+              {
+                "user_id": 1,
+                "user_type": "recruiter"
+              }
+            ],
+            "subject": "Regarding the Senior Backend Engineer position"
+          }
+        ]
+      },
+      "ThreadsByUser": {
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "user_type": {
+            "type": "string",
+            "title": "User Type",
+            "description": "member or recruiter",
+            "default": "member"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page",
+            "default": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "default": 20
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "ThreadsByUser"
+      },
+      "TopJobsRequest": {
+        "properties": {
+          "metric": {
+            "type": "string",
+            "title": "Metric",
+            "description": "Metric: applications, views, saves",
+            "default": "applications"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "default": 10
+          },
+          "window_days": {
+            "type": "integer",
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Window Days",
+            "description": "Look-back window in days",
+            "default": 30
+          }
+        },
+        "type": "object",
+        "title": "TopJobsRequest"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
